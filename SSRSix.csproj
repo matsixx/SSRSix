@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <RootNamespace>SSRSix</RootNamespace>
+    <AssemblyName>SSRSix</AssemblyName>
+    <Nullable>disable</Nullable>
+    <Authors>matsix</Authors>
+    <AssemblyVersion>1.0.1</AssemblyVersion>
+    <FileVersion>$(AssemblyVersion)</FileVersion>
+    <Version>$(AssemblyVersion)</Version>
+    <Configurations>Debug;Release</Configurations>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+  </PropertyGroup>
+
+  <!-- The Assets/ folder holds the shader + editor tester (source for the AssetBundle), not C# to compile. -->
+  <ItemGroup>
+    <Compile Remove="Assets\**\*.cs" />
+  </ItemGroup>
+
+  <!-- References resolve from the local libs/ folder (DLLs copied from the game Managed + BepInEx, same set
+       as FogSix) so the project builds standalone outside the SPT install tree. -->
+  <ItemGroup>
+    <Reference Include="0Harmony"><HintPath>libs\0Harmony.dll</HintPath></Reference>
+    <Reference Include="spt-reflection"><HintPath>libs\spt-reflection.dll</HintPath></Reference>
+    <Reference Include="Assembly-CSharp"><HintPath>libs\Assembly-CSharp.dll</HintPath></Reference>
+    <Reference Include="BepInEx"><HintPath>libs\BepInEx.dll</HintPath></Reference>
+    <Reference Include="Comfort"><HintPath>libs\Comfort.dll</HintPath></Reference>
+    <Reference Include="Comfort.Unity"><HintPath>libs\Comfort.Unity.dll</HintPath></Reference>
+    <Reference Include="UnityEngine"><HintPath>libs\UnityEngine.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.CoreModule"><HintPath>libs\UnityEngine.CoreModule.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.PhysicsModule"><HintPath>libs\UnityEngine.PhysicsModule.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.AssetBundleModule"><HintPath>libs\UnityEngine.AssetBundleModule.dll</HintPath></Reference>
+    <Reference Include="Unity.Postprocessing.Runtime"><HintPath>libs\Unity.Postprocessing.Runtime.dll</HintPath></Reference>
+  </ItemGroup>
+  <!-- Auto-deploy: EVERY build (Debug or Release) copies the DLL straight into the game, so there is
+       never a stale-DLL / wrong-folder question - the game always runs whatever was built last.
+       Skipped silently when the game folder doesn't exist (e.g. building on another machine). -->
+  <Target Name="DeployToGame" AfterTargets="Build" Condition="Exists('F:\SPT4.1\BepInEx\plugins\SSRSix')">
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="F:\SPT4.1\BepInEx\plugins\SSRSix" />
+    <Message Importance="high" Text="==&gt; SSRSix.dll deployed to F:\SPT4.1\BepInEx\plugins\SSRSix" />
+  </Target>
+
+</Project>
