@@ -8,14 +8,10 @@ Support my work on Ko-fi: https://ko-fi.com/matsix
 
 ## Features
 
-- **Stable reflections in motion:** rays are traced purely in view space, so the camera's bob and jitter can't shake them. A temporal resolve reprojects each reflection at the depth of what it reflects, which keeps it anchored while you walk and turn.
-- **Real glossy reflections:** rough surfaces reflect softly and smooth ones sharply. Each ray samples its surface's roughness, and reflections stay sharp near contact points and soften with distance.
-- **Wet-street streaks:** reflections stretch into long light streaks at grazing angles, like lamps on wet asphalt at night.
-- **Rain streaks on walls:** water flows down vertical surfaces while it rains and trails off about 20 seconds after it stops. Covered walls stay dry.
-- **Firefly suppression:** tiny hot highlights don't flicker as blinding dots.
-- **Grass stays matte:** foliage is detected and kept from turning glossy.
-- **Sky in reflections:** rays that reach visible sky show it, clouds included. With CloudSix the off-screen sky is reflected too (see Compatibility).
-- **VR:** each eye is traced with its own camera, and both eyes agree.
+- Smooth reflections on rough surfaces
+- Water flows down walls when it's raining
+- Compatible with CloudSix, base game SSR does not reflect my clouds
+- Compatible with SPT-VR
 
 ## Requirements
 
