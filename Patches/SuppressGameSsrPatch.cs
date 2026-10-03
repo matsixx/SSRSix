@@ -12,7 +12,7 @@ namespace SSRSix.Patches
     // specular into the scene (CameraClass.SetSSR — the "SSRenabled" global plus whatever else keys off
     // the setting). With it OFF, wet surfaces carry blinding baked-probe radiance (day-baked probes at
     // night = white patches/sparkle) that our reflections fetch and re-amplify; forcing the global alone
-    // did NOT reproduce the clean state, and the user's A/B proved enabling the real setting does. So:
+    // did NOT reproduce the clean state, and in-game A/B testing showed enabling the real setting does. So:
     // keep the setting ON — the whole game-side state is then exactly what our tracer wants to read —
     // and cut the render here.
     //
