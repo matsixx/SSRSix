@@ -1,74 +1,95 @@
 # SSRSix
 
-Screen-space reflections for Single Player Tarkov — **flatscreen and VR (SPT-VR) compatible**. A standalone
-BepInEx plugin laid out like FogSix (`SPT-VolumetricFog`).
+Screen-space reflections for Single Player Tarkov. SSRSix replaces Tarkov's built-in SSR with its own
+reflections on water, puddles, glass and wet ground. They stay stable in motion and are correct in VR, where
+the game's own SSR doesn't work at all. Works on flatscreen and in VR.
 
-Tarkov's own SSR is the stock PPv2 `ScreenSpaceReflections` effect: it reconstructs from the **mono** camera
-matrices and rides the post-processing layer, both of which are dead/wrong in VR multipass. SSRSix traces
-its own reflections per-eye (explicit `GetStereoViewMatrix`/`GetStereoProjectionMatrix` matrices, the FogSix
-reconstruction pattern) and also runs fine in mono on flatscreen.
+Support my work on Ko-fi: https://ko-fi.com/matsix
 
-## How it works
+## Features
 
-- **Hook:** prefix on `TOD_Scattering.OnRenderImageNormalMode` (the `[ImageEffectOpaque]` hook FogSix uses),
-  at `HarmonyPriority.First` so it runs **before** FogSix's fog. The prefix composites reflections **into
-  `source` in place** and returns `true` — it never consumes the hook, so FogSix (or vanilla TOD scattering)
-  still renders `source -> destination` afterwards and the reflections get fogged correctly. Works with or
-  without FogSix installed.
-- **Inputs:** depth (`_CameraDepthTexture`) + the deferred G-buffers (`_CameraGBufferTexture2` world normals,
-  `_CameraGBufferTexture1` spec colour/smoothness). EFT renders opaques deferred — its water system
-  (`WaterSSR.WaterRendererv3`) even injects water meshes into the G-buffer at `CameraEvent.BeforeReflections`,
-  so lakes/puddles should carry real normals+smoothness here too.
-- **Tracer:** perspective-correct screen-space DDA (the McGuire/kode80 scheme) — the ray's visible screen
-  segment is walked at uniform screen steps with exact 1/w-interpolated depth, + 5-step binary refine,
-  backface rejection at the hit, fresnel × smoothness × edge/distance fades. Miss = keep the scene pixel
-  (the baked reflection-probe specular stays as the fallback). Half-res trace + FogSix's depth-aware
-  upsample by default.
-- **Temporal resolve (the Frostbite/FidelityFX-SSSR denoiser core):** the reflection buffer is blended each
-  frame with last frame's resolved reflections — reprojected through the previous camera matrices and
-  clamped against the current neighborhood so history can't ghost. This is what keeps reflections stable
-  IN MOTION: the game's TAA jitters the depth/G-buffer sub-pixel every frame, and without our own history
-  the hit tests strobe (visible while moving; the game TAA only hides it once you stand still). Knob:
-  `Temporal Smoothing` (0 = off). `Temporal Jitter` adds the per-pixel/per-frame ray dither the resolve
-  averages out.
+- **Stable reflections in motion:** rays are traced purely in view space, so the camera's bob and jitter can't shake them. A temporal resolve reprojects each reflection at the depth of what it reflects, which keeps it anchored while you walk and turn.
+- **Real glossy reflections:** rough surfaces reflect softly and smooth ones sharply. Each ray samples its surface's roughness, and reflections stay sharp near contact points and soften with distance.
+- **Wet-street streaks:** reflections stretch into long light streaks at grazing angles, like lamps on wet asphalt at night.
+- **Rain streaks on walls:** water flows down vertical surfaces while it rains and trails off about 20 seconds after it stops. Covered walls stay dry.
+- **Firefly suppression:** tiny hot highlights don't flicker as blinding dots.
+- **Grass stays matte:** foliage is detected and kept from turning glossy.
+- **Sky in reflections:** rays that reach visible sky show it, clouds included. With CloudSix the off-screen sky is reflected too (see Compatibility).
+- **VR:** each eye is traced with its own camera, and both eyes agree.
 
-## Building
+## Requirements
+
+- SPT 4.1.
+
+## Install
+
+1. Extract the release into your SPT folder. You should end up with:
+   ```
+   BepInEx/plugins/SSRSix/SSRSix.dll
+   BepInEx/plugins/SSRSix/Assets/ssr
+   ```
+2. In Tarkov's graphics settings, turn **SSR on**. SSRSix stops the game's SSR from rendering, but the setting
+   puts the game's materials in the state SSRSix's reflections expect. With it off, wet surfaces can show
+   blinding baked reflections, especially at night.
+3. Launch the game.
+
+## Settings
+
+Open the in-game configuration manager (F12) or edit `BepInEx/config/com.matsix.ssrsix.cfg`.
+These are the main ones. The Advanced view has many more.
+
+| Setting | Default | What it does |
+|---|---|---|
+| Enabled | On | Turns SSRSix's reflections on or off. |
+| Disable Tarkov SSR Render | On | Stops the game's own SSR from drawing, so the two never stack. |
+| Intensity | 1 | Reflection strength. 1 is physically based. |
+| Smoothness Cutoff | 0.77 | Only surfaces at least this smooth reflect. Lower it for more wet-looking surfaces, at more cost. |
+| Reflection Softness | 0 | Extra blur on every reflection. 0 is razor sharp. |
+| Foliage Gloss Reduction | 0.9 | Keeps grass from looking glossy. |
+| Rain Streaks On Walls | 0.4 | Strength of the rain running down walls. |
+| Temporal Smoothing | 0.8 | Denoises the reflections, at the cost of some smudging in motion. |
+| Ray Steps | 250 | How far a ray can travel across the screen. |
+| Max Distance | 160 | How far a reflected ray may travel, in metres. |
+
+The Advanced view also has glossy and stochastic options, trace tuning, a half-resolution trace and debug views.
+
+## Performance
+
+If you need frames back:
+
+- Turn on **Half-Resolution Trace** in the Advanced view. It's the biggest win for a small quality cost.
+- Lower **Ray Steps**. This also tends to make reflections steadier.
+- Raise **Smoothness Cutoff** so fewer surfaces are traced.
+
+## Compatibility
+
+- **CloudSix (optional, recommended):** turn on CloudSix's **Publish Sky For Reflections** and SSRSix reflects the live sky and clouds in every direction, with no seam. A roof check keeps clouds out of indoor reflections. Without CloudSix, sky that isn't on screen falls back to the game's baked reflection probes.
+- **FogSix:** reflections are drawn before the fog, so they get fogged like the rest of the scene. The path from the surface to what it reflects is fogged too. SSRSix works the same with or without FogSix.
+- **SPT-VR:** supported.
+
+## Known limitations
+
+- Reflections are drawn before transparent objects, so they appear under glass and smoke rather than on top.
+- No reflections are drawn through scopes.
+
+## Building from source
 
 ```sh
-dotnet build -c Release        # -> bin/Release/netstandard2.1/SSRSix.dll
+dotnet build SSRSix.csproj -c Release
 ```
 
-`libs/` is copied from FogSix (game Managed + BepInEx DLLs) so it builds standalone.
+The project references the game's DLLs from a local `libs/` folder that isn't in the repository. Copy these
+into it from your SPT install:
 
-## Install layout
+- From `EscapeFromTarkov_Data/Managed`: `Assembly-CSharp.dll`, `Comfort.dll`, `Comfort.Unity.dll`, `UnityEngine.dll`, `UnityEngine.CoreModule.dll`, `UnityEngine.PhysicsModule.dll`, `UnityEngine.AssetBundleModule.dll`, `Unity.Postprocessing.Runtime.dll`
+- From `BepInEx/core`: `0Harmony.dll`, `BepInEx.dll`
+- From `BepInEx/plugins/spt`: `spt-reflection.dll`
 
-```
-BepInEx/plugins/SSRSix/SSRSix.dll
-BepInEx/plugins/SSRSix/Assets/ssr        <- the AssetBundle
-```
+The reflection shader ships compiled in the `ssr` bundle in each release. Its source isn't part of this
+repository.
 
-## First run — the G-buffer probe (do this before judging anything)
+## Credits
 
-The one unverified assumption (from `ssr-vr-project.md`) is that the G-buffer globals are readable, per eye,
-at our hook in VR. The debug views settle it in seconds:
-
-1. Set `Debug View = Normals` in the config: the world should render as smooth orientation colours
-   (ground greenish, walls by facing). Check **both eyes** — they must agree apart from the parallax.
-2. `Smoothness`: water/glass/wet surfaces should read bright, dirt dark.
-3. If both look right, set `Debug View = ReflectionMask`, find water/a puddle — glossy areas should light up.
-4. Back to `Off` and look at the actual reflections.
-
-If Normals/Smoothness render black or garbage in one or both eyes, the G-buffers aren't live at the hook —
-report which, that decides the fallback (CommandBuffer capture at an earlier CameraEvent).
-
-Also worth one flatscreen sanity pass first (faster loop than the headset) — everything renders through the
-same code path in mono.
-
-## Known limits (v1, accepted)
-
-- Composites at opaque time: reflections land **under** transparents — right for fog/smoke, slightly odd on
-  glass itself.
-- No roughness blur: below-cutoff surfaces get no SSR rather than blurry SSR (hence the high default cutoff).
-- Sky is not ray-hit (sky reflections still come from the surface's own probe/cubemap shading).
-- The optic/scope camera is not hooked (its second render has no TOD_Scattering image effect).
-- On flatscreen, Tarkov's own SSR setting should be **Off** — the two would stack.
+- Tomasz Stachowiak, "Stochastic Screen-Space Reflections" (Frostbite, SIGGRAPH 2015).
+- Morgan McGuire and Michael Mara, "Efficient GPU Screen-Space Ray Tracing" (2014).
+- AMD FidelityFX SSSR.
