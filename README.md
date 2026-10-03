@@ -40,18 +40,6 @@ dotnet build -c Release        # -> bin/Release/netstandard2.1/SSRSix.dll
 
 `libs/` is copied from FogSix (game Managed + BepInEx DLLs) so it builds standalone.
 
-## The AssetBundle (one-time, in the Unity project)
-
-Same flow as the `volfog` bundle:
-
-1. Copy `Assets/ScreenSpaceReflections.shader` (and optionally `Assets/SsrTester.cs`) into the Unity project.
-2. Create a Material named **`ssrMat`** using shader `Hidden/SPTVR/SSRSix`.
-3. Assign the material to an AssetBundle named **`ssr`** and build bundles.
-4. Ship the bundle to `BepInEx/plugins/SSRSix/Assets/ssr`.
-
-To iterate in the editor: camera set to **Deferred** rendering, add `SsrTester`, assign a material with the
-shader, put some high-smoothness materials in the scene.
-
 ## Install layout
 
 ```
